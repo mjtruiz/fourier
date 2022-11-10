@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+
+<html>
+
+<head> 
+<meta charset="UTF-8">
+
+<title>Fourier Synthesizer 16</title>
+
+<link rel="stylesheet" type="text/css" href="normalize.css">
+
+<style>
+
+body {
+  /* Prevent accidental text selection */
+  -webkit-user-select: none;   /* Chrome, Opera, Safari */
+  -moz-user-select: none;      /* Firefox */
+  -ms-user-select: none;       /* IE 10+ */
+  -khtml-user-select: none;    /* Konqueror */
+  -webkit-touch-callout: none; /* Mobile Devices */
+  user-select: none;           /* Likely Future */
+
+  font-family: Arial, Helvetica, sans-serif;
+
+  /* Force no scroll bars when opened in a new window */
+  overflow-x:hidden;overflow-y:hidden;
+}
+
+#overlay {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  z-index: 2;
+  cursor: pointer;
+}
+
+#overlay img {
+  position: fixed;
+  transform: translate(215px,80px);
+  width: 350px;
+  height: 350px;
+}
+
+#fourierSynthesizer {
+  position: relative;
+  background-color: #bbb;
+  margin: 10px;
+  width: 780px;
+  height: 510px;
+}
+
+/* The Scope Viewing Area inside the center div.
+   Note that the canvas size is set in the html.
+*/ 
+canvas {
+  background-color: #008c8c;
+  position: relative;
+  top: 12px;
+  left: 180px;
+  border-width: 2px;
+  border-style: groove;
+}
+
+/* Specify vertical slider */
+input[type=range][orient=vertical] {
+  writing-mode: bt-lr; /* IE */
+  -webkit-appearance: slider-vertical; /* WebKit */
+  width: 8px;
+  height: 100px;
+  padding: 0 15px;
+  position: relative;
+  top: 12px;
+}
+
+/* Waveforms */
+#waveforms { position: absolute; top: 10px; left: 600px; }
+
+/* The Controls are below the Canvas */
+#controls {
+  position: absolute;
+  top: 270px; left: 7px;
+}
+
+#label_amp { position: relative; top: -26px; left: 6px; }
+#label_phase { position: relative; top: 180px; left: -8px; }
+
+/* The Division for each harmonic control */
+#H01 { position: absolute; top: 0px; left:   0px; }
+#H02 { position: absolute; top: 0px; left:  48px; }
+#H03 { position: absolute; top: 0px; left:  96px; }
+#H04 { position: absolute; top: 0px; left: 144px; }
+#H05 { position: absolute; top: 0px; left: 192px; }
+#H06 { position: absolute; top: 0px; left: 240px; }
+#H07 { position: absolute; top: 0px; left: 288px; }
+#H08 { position: absolute; top: 0px; left: 336px; }
+#H09 { position: absolute; top: 0px; left: 384px; }
+#H10 { position: absolute; top: 0px; left: 432px; }
+#H11 { position: absolute; top: 0px; left: 480px; }
+#H12 { position: absolute; top: 0px; left: 528px; }
+#H13 { position: absolute; top: 0px; left: 576px; }
+#H14 { position: absolute; top: 0px; left: 624px; }
+#H15 { position: absolute; top: 0px; left: 672px; }
+#H16 { position: absolute; top: 0px; left: 720px; }
+
+/* The width of the input amplitude textboxes */
+#text_A01 { width: 40px; }
+#text_A02 { width: 40px; }
+#text_A03 { width: 40px; }
+#text_A04 { width: 40px; }
+#text_A05 { width: 40px; }
+#text_A06 { width: 40px; }
+#text_A07 { width: 40px; }
+#text_A08 { width: 40px; }
+#text_A09 { width: 40px; }
+#text_A10 { width: 40px; }
+#text_A11 { width: 40px; }
+#text_A12 { width: 40px; }
+#text_A13 { width: 40px; }
+#text_A14 { width: 40px; }
+#text_A15 { width: 40px; }
+#text_A16 { width: 40px; }
+
+/* The width of the input phase textboxes */
+#text_P01 { width: 40px; }
+#text_P02 { width: 40px; }
+#text_P03 { width: 40px; }
+#text_P04 { width: 40px; }
+#text_P05 { width: 40px; }
+#text_P06 { width: 40px; }
+#text_P07 { width: 40px; }
+#text_P08 { width: 40px; }
+#text_P09 { width: 40px; }
+#text_P10 { width: 40px; }
+#text_P11 { width: 40px; }
+#text_P12 { width: 40px; }
+#text_P13 { width: 40px; }
+#text_P14 { width: 40px; }
+#text_P15 { width: 40px; }
+#text_P16 { width: 40px; }
+
+#frequency {position:absolute;top:470px;left:100px;}
+#text_f { width: 40px; }
+#set_frequency {position:relative;top:4px;left:10px;width:320px}
+
+#title { position: absolute; top: 10px; left: 10px; }
+
+#computerVolume {
+  position: relative;
+  top: 220px;
+  left: 550px;
+}
+
+#set_max_volume {
+  position: relative;
+  top: 6px;
+  left: 0px;
+  width: 100px;
+}
+
+input{text-align:center;}
+
+#error {
+  display: none;
+  font-weight: bold;
+  color: red;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="overlay" onclick="startAudio()">
+  <img src="play_button.svg">
+</div>
+
+<div id="error">
+</div>
+
+<div id="fourierSynthesizer">
+
+  <!-- The Canvas - Scope Viewing Area -->
+  <canvas id="wave_can" width="400" height="240">
+    Your browser does not support the html5 canvas.
+  </canvas>
+
+  <!-- Buttons grouped under waveforms div -->
+  <div id="waveforms">
+    < Normalized Sum<br><br>
+    <button id="btn_sine">Sine</button><br>
+    <button id="btn_triangle">Triangle</button><br>
+    <button id="btn_square">Square</button><br>
+    <button id="btn_ramp">Ramp (Sawtooth)</button><br>
+    <button id="btn_pulseTrain">Pulse Train</button><br>
+    <br>
+    <button id="btn_reset">Reset Amplitudes</button><br>
+    <button id="btn_setFrequency200">Set f = 200 Hz</button>
+    <button id="btn_setFrequency400">Set f = 400 Hz</button>
+  </div>
+
+  <!-- The next Controls are below the Canvas -->
+  <div id="controls" align="center">
+    <div id="label_amp">Amplitudes</div>
+    <div id="label_phase">Phases</div>
+    <div id="H01">
+      <input id="text_A01" type="text"
+       value="1.00" size="4" maxlength="4"><br>
+      <input id="slider_A01" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H1<br>
+      <input id="text_P01" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H02">
+      <input id="text_A02" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A02" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H2<br>
+      <input id="text_P02" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H03">
+      <input id="text_A03" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A03" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H3<br>
+      <input id="text_P03" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H04">
+      <input id="text_A04" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A04" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H4<br>
+      <input id="text_P04" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H05">
+      <input id="text_A05" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A05" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H5<br>
+      <input id="text_P05" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H06">
+      <input id="text_A06" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A06" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H6<br>
+      <input id="text_P06" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H07">
+      <input id="text_A07" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A07" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H7<br>
+      <input id="text_P07" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H08">
+      <input id="text_A08" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A08" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H8<br>
+      <input id="text_P08" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H09">
+      <input id="text_A09" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A09" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H9<br>
+      <input id="text_P09" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H10">
+      <input id="text_A10" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A10" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H10<br>
+      <input id="text_P10" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H11">
+      <input id="text_A11" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A11" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H11<br>
+      <input id="text_P11" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H12">
+      <input id="text_A12" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A12" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H12<br>
+      <input id="text_P12" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H13">
+      <input id="text_A13" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A13" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H13<br>
+      <input id="text_P13" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H14">
+      <input id="text_A14" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A14" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H14<br>
+      <input id="text_P14" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H15">
+      <input id="text_A15" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A15" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H15<br>
+      <input id="text_P15" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+    <div id="H16">
+      <input id="text_A16" type="text"
+       value="0.00" size="4" maxlength="4"><br>
+      <input id="slider_A16" type="range" orient="vertical"
+      min="0" max="1" step="0.01">
+      <br><br>H16<br>
+      <input id="text_P16" type="text"
+       value="0" size="3" maxlength="3">
+    </div>
+  </div>
+
+  <div id="frequency">
+    f = <input id="text_f" type="text"
+        value="400" size="3" maxlength="3"> Hz
+    <input id="set_frequency" type="range"
+      min="0" max="800" value="400" step="1">
+  </div>
+
+  <div id="computerVolume">
+    <!-- Computer Volume, A and f text boxes -->
+    Volume:
+    <input id="set_max_volume" type="range"
+      min="0" max="1" value="0.2" step="0.01">
+    <button id="btn_mute">Mute</button>
+  </div>
+
+  <div id="title">
+    Fourier Synthesizer<br>Ruiz/UNCA
+    <br><br>Harmonics 1 to 16
+    <br>H1, H2, ... H16
+    <br><br>
+    <a href="#" onclick="window.open('fourier_info.html')">Info</a>
+  </div> 
+
+</div>
+
+<script>
+
+/*
+
++---------------------------------------------------------+
+| Michael Ruiz                                            |
++---------------------------------------------------------|
+| License:                                                |
+| Creative Commons Attribution-NonCommercial 4.0 Unported |
+| http://creativecommons.org/licenses/by-nc/4.0/legalcode |
++---------------------------------------------------------+
+| You are free to (for noncommercial use):                |
+|                                                         |
+| Share — copy and redistribute the material in any       |
+|         medium or format                                |
+| Adapt — remix, transform, and build upon the material   |
+|                                                         |
+| The licensor cannot revoke these freedoms as long as    |
+| you follow the license terms.                           |
+|                                                         |
+| Attribution — You must give appropriate credit, include |
+| this license, and indicate if changes were made. You    |
+| may do so in any reasonable manner, but not in any way  |
+| that suggests the licensor endorses you or your use.    |
+|                                                         |
+| Sample Web Credit Line: Courtesy Michael Ruiz           |
+|                                                         |
+| NonCommercial — You may not use the material for        |
+|   commercial purposes.                                  |
+|                                                         |
+| No additional restrictions — You may not apply legal    |
+| terms or technological measures that legally restrict   |
+| others from doing anything the license permits.         |
++---------------------------------------------------------+
+
+Code History
+September 11, 2015 Start Basic App with 9 harmonics
+September 23, 2017 Style across browsers with 12 harmonics
+September 24, 2017 Upgrade to 16 Harmonics
+  October 18, 2017 Evan Upgrade to Work on Mobile Devices
+
+*/
+
+function startAudio() {
+
+  document.getElementById("overlay").style.display = "none";
+
+  //Get access to the canvas.
+  var can = document.getElementById("wave_can");
+  var c = can.getContext("2d");
+
+/*
+
+  Cartesian Coordinates (x, y)
+
+ 1.0 +---+---+---+---+---+---+---+---+---+---+  ---
+     |   |   |   |   |   |   |   |   |   |   |   |
+ 0.5 +---+---+---+---+---+---+---+---+---+---+   |
+     |   |   |   |   |   |   |   |   |   |   |   |
+ 0.0 +---+---+---+---+---+---+---+---+---+---+   H
+     |   |   |   |   |   |   |   |   |   |   |   |
+-0.5 +---+---+---+---+---+---+---+---+---+---+   |
+     |   |   |   |   |   |   |   |   |   |   |   |
+-1.0 +---+---+---+---+---+---+---+---+---+---+  ---
+     0   1   2   3   4   5   6   7   8   9   10
+     |------------------ W ------------------|       
+*/
+
+  // The extremes for the Cartesian coordinates
+  var xMin = 0, xMax = +10, yMin = -1.0, yMax = +1.0;
+
+  var xDoffset = 20; // Insets allow for neat trim
+  var yDoffset = 20; //   around the viewing area
+
+  // Canvas dimensions
+	var canWidth = can.width;
+	var canHeight = can.height;
+
+  // The actual oscilloscope region for placing the waves
+  var width = canWidth - 2 * xDoffset;
+  var height = canHeight - 2 * yDoffset;
+
+  // Basic formula y = A sin(k * x) with ko = 2 * PI / sW
+  //   sW is scope wavelength in scope units or divisions
+  // Now think in terms of time and frequency for the moment.
+  // Consider a scope Time/Div = 0.5 ms with 10 divisions.
+  // Then, a 200-Hz wave, i.e., period T = 1000/200 = 5 ms,
+  //   takes up the entire 10 scope units = 10 divisions.
+  // Therefore, the formula for scope wavelength must be
+  //   sW = 2000/f so you get
+  //   sW = 10 scope units when f = 200 Hz.
+  // Summary: sW = 2000/f
+  // ko = 2 * PI * f / sW => k = 2 * PI * f / 2000
+
+  var f = 400;
+
+  var ko = 2 * Math.PI * f / 2000;
+  var dx = 0.01;
+
+  var A01 = 1;
+  var A02 = 0;
+  var A03 = 0;
+  var A04 = 0;
+  var A05 = 0;
+  var A06 = 0;
+  var A07 = 0;
+  var A08 = 0;
+  var A09 = 0;
+  var A10 = 0;
+  var A11 = 0;
+  var A12 = 0;
+  var A13 = 0;
+  var A14 = 0;
+  var A15 = 0;
+  var A16 = 0;
+
+  var Amin = 0;
+  var Amax = 1;
+
+  // Overall volume control for the amp. We want to be able to
+  //   lower the sound without affecting the amplitude displayed.
+  var setMaxVolume = document.getElementById("set_max_volume");
+  setMaxVolume.addEventListener("input", newMaxVolume);
+
+	// Mute takes setMaxVolume to 0 but still displays the wave.
+  var muteStatus = document.getElementById("btn_mute");
+  muteStatus.addEventListener("click", mute);
+
+  // For the extra slider to control overall volume
+	// maxVolume will range from 0.0 to 1.0
+  var maxVolume = 0.2; // Consider as computer volume
+  setMaxVolume.value = maxVolume;
+
+  // The oscillators
+  var audio = null;
+  var osc01, amp01;
+  var osc02, amp02;
+  var osc03, amp03;
+  var osc04, amp04;
+  var osc05, amp05;
+  var osc06, amp06;
+  var osc07, amp07;
+  var osc08, amp08;
+  var osc09, amp09;
+  var osc10, amp10;
+  var osc11, amp11;
+  var osc12, amp12;
+  var osc13, amp13;
+  var osc14, amp14;
+  var osc15, amp15;
+  var osc16, amp16;
+
+  if (window.AudioContext) {
+    audio = new window.AudioContext();
+  }
+  else if (window.webkitAudioContext) {
+    audio = new window.webkitAudioContext();
+  }
+  else {
+     var msg = "HTML5 Audio is not supported in this browser.";
+     msg = msg + " Please use the latest version of Chrome or Firefox.";
+     alert(msg);
+     document.getElementById("wrapper").style.display = "none";
+     document.getElementById("error").style.display = "inline";
+     document.getElementById("error").innerHTML = msg;
+     throw new Error(msg);
+  }
+  
+  osc01 = audio.createOscillator();  // Create an oscillator
+  amp01 = audio.createGain(); 	  	 // Create an amplifier
+  osc01.connect(amp01); 			       // Connect to amplifier
+  amp01.connect(audio.destination);  // Connect to speakers
+  
+  osc01.type = "sine";
+  osc01.frequency.value = f;
+  amp01.gain.value = 0.15 * A01 * maxVolume;
+  osc01.start();
+  
+  osc02 = audio.createOscillator();
+  amp02 = audio.createGain();
+  osc02.connect(amp02);
+  amp02.connect(audio.destination);
+  
+  osc02.type = "sine";
+  osc02.frequency.value = 2 * f;
+  amp02.gain.value = 0.15 * A02 * maxVolume;
+  osc02.start();
+  
+  osc03 = audio.createOscillator();
+  amp03 = audio.createGain();
+  osc03.connect(amp03);
+  amp03.connect(audio.destination);
+  
+  osc03.type = "sine";
+  osc03.frequency.value = 3 * f;
+  amp03.gain.value = 0.15 * A03 * maxVolume;
+  osc03.start();
+  
+  osc04 = audio.createOscillator();
+  amp04 = audio.createGain();
+  osc04.connect(amp04);
+  amp04.connect(audio.destination);
+  
+  osc04.type = "sine";
+  osc04.frequency.value = 4 * f;
+  amp04.gain.value = 0.15 * A04 * maxVolume;
+  osc04.start();
+  
+  osc05 = audio.createOscillator();
+  amp05 = audio.createGain();
+  osc05.connect(amp05);
+  amp05.connect(audio.destination);
+  
+  osc05.type = "sine";
+  osc05.frequency.value = 5 * f;
+  amp05.gain.value = 0.15 * A05 * maxVolume;
+  osc05.start();
+  
+  osc06 = audio.createOscillator();
+  amp06 = audio.createGain();
+  osc06.connect(amp06);
+  amp06.connect(audio.destination);
+  
+  osc06.type = "sine";
+  osc06.frequency.value = 6 * f;
+  amp06.gain.value = 0.15 * A06 * maxVolume;
+  osc06.start();
+  
+  osc07 = audio.createOscillator();
+  amp07 = audio.createGain();
+  osc07.connect(amp07);
+  amp07.connect(audio.destination);
+  
+  osc07.type = "sine";
+  osc07.frequency.value = 7 * f;
+  amp07.gain.value = 0.15 * A07 * maxVolume;
+  osc07.start();
+  
+  osc08 = audio.createOscillator();
+  amp08 = audio.createGain();
+  osc08.connect(amp08);
+  amp08.connect(audio.destination);
+  
+  osc08.type = "sine";
+  osc08.frequency.value = 8 * f;
+  amp08.gain.value = 0.15 * A08 * maxVolume;
+  osc08.start();
+  
+  osc09 = audio.createOscillator();
+  amp09 = audio.createGain();
+  osc09.connect(amp09);
+  amp09.connect(audio.destination);
+  
+  osc09.type = "sine";
+  osc09.frequency.value = 9 * f;
+  amp09.gain.value = 0.15 * A09 * maxVolume;
+  osc09.start();
+  
+  osc10 = audio.createOscillator();
+  amp10 = audio.createGain();
+  osc10.connect(amp10);
+  amp10.connect(audio.destination);
+  
+  osc10.type = "sine";
+  osc10.frequency.value = 10 * f;
+  amp10.gain.value = 0.15 * A10 * maxVolume;
+  osc10.start();
+  
+  osc11 = audio.createOscillator();
+  amp11 = audio.createGain();
+  osc11.connect(amp11);
+  amp11.connect(audio.destination);
+  
+  osc11.type = "sine";
+  osc11.frequency.value = 11 * f;
+  amp11.gain.value = 0.15 * A11 * maxVolume;
+  osc11.start();
+  
+  osc12 = audio.createOscillator();
+  amp12 = audio.createGain();
+  osc12.connect(amp12);
+  amp12.connect(audio.destination);
+  
+  osc12.type = "sine";
+  osc12.frequency.value = 12 * f;
+  amp12.gain.value = 0.15 * A12 * maxVolume;
+  osc12.start();
+  
+  osc13 = audio.createOscillator();
+  amp13 = audio.createGain();
+  osc13.connect(amp13);
+  amp13.connect(audio.destination);
+  
+  osc13.type = "sine";
+  osc13.frequency.value = 13 * f;
+  amp13.gain.value = 0.15 * A13 * maxVolume;
+  osc13.start();
+  
+  osc14 = audio.createOscillator();
+  amp14 = audio.createGain();
+  osc14.connect(amp14);
+  amp14.connect(audio.destination);
+  
+  osc14.type = "sine";
+  osc14.frequency.value = 14 * f;
+  amp14.gain.value = 0.15 * A14 * maxVolume;
+  osc14.start();
+  
+  osc15 = audio.createOscillator();
+  amp15 = audio.createGain();
+  osc15.connect(amp15);
+  amp15.connect(audio.destination);
+  
+  osc15.type = "sine";
+  osc15.frequency.value = 15 * f;
+  amp15.gain.value = 0.15 * A15 * maxVolume;
+  osc15.start();
+  
+  osc16 = audio.createOscillator();
+  amp16 = audio.createGain();
+  osc16.connect(amp16);
+  amp16.connect(audio.destination);
+  
+  osc16.type = "sine";
+  osc16.frequency.value = 16 * f;
+  amp16.gain.value = 0.15 * A16 * maxVolume;
+  osc16.start();
+
+  // Waveform button colors switched when toggled on and off
+  var defaultBtnColor = '#d4d0c8';   // Waveform not selected 
+  var highlightBtnColor = '#ffff88'; // Waveform selected
+
+  // The five waveforms
+  var btnSine = document.getElementById("btn_sine");
+  var btnTriangle = document.getElementById("btn_triangle");
+  var btnSquare = document.getElementById("btn_square");
+  var btnRamp = document.getElementById("btn_ramp");
+  var btnPulseTrain = document.getElementById("btn_pulseTrain");
+
+  var btnReset = document.getElementById("btn_reset");
+  var btnSetFrequency200 = document.getElementById("btn_setFrequency200");
+  var btnSetFrequency400 = document.getElementById("btn_setFrequency400");
+
+  btnSine.addEventListener("click", sine);
+  btnTriangle.addEventListener("click", triangle);
+  btnSquare.addEventListener("click", square);
+  btnRamp.addEventListener("click", ramp);
+  btnPulseTrain.addEventListener("click", pulseTrain);
+  btnReset.addEventListener("click", fncReset);
+  btnSetFrequency200.addEventListener("click", setFrequency200);
+  btnSetFrequency400.addEventListener("click", setFrequency400);
+
+  btnSine.style.backgroundColor=defaultBtnColor;
+  btnTriangle.style.backgroundColor=defaultBtnColor;
+  btnSquare.style.backgroundColor=defaultBtnColor;
+  btnRamp.style.backgroundColor=defaultBtnColor;
+  btnPulseTrain.style.backgroundColor=defaultBtnColor;
+  btnReset.style.backgroundColor=defaultBtnColor;
+  btnSetFrequency200.style.backgroundColor=defaultBtnColor;
+  btnSetFrequency400.style.backgroundColor=defaultBtnColor;
+
+  // Must initial here for Firefox to take it
+  var textA01 = document.getElementById("text_A01");
+  textA01.addEventListener("input", enterA01);
+  textA01.value = 1.00;
+
+  var textA02 = document.getElementById("text_A02");
+  textA02.addEventListener("input", enterA02);
+
+  var textA03 = document.getElementById("text_A03");
+  textA03.addEventListener("input", enterA03);
+
+  var textA04 = document.getElementById("text_A04");
+  textA04.addEventListener("input", enterA04);
+
+  var textA05 = document.getElementById("text_A05");
+  textA05.addEventListener("input", enterA05);
+
+  var textA06 = document.getElementById("text_A06");
+  textA06.addEventListener("input", enterA06);
+
+  var textA07 = document.getElementById("text_A07");
+  textA07.addEventListener("input", enterA07);
+
+  var textA08 = document.getElementById("text_A08");
+  textA08.addEventListener("input", enterA08);
+
+  var textA09 = document.getElementById("text_A09");
+  textA09.addEventListener("input", enterA09);
+
+  var textA10 = document.getElementById("text_A10");
+  textA10.addEventListener("input", enterA10);
+
+  var textA11 = document.getElementById("text_A11");
+  textA11.addEventListener("input", enterA11);
+
+  var textA12 = document.getElementById("text_A12");
+  textA12.addEventListener("input", enterA12);
+
+  var textA13 = document.getElementById("text_A13");
+  textA13.addEventListener("input", enterA13);
+
+  var textA14 = document.getElementById("text_A14");
+  textA14.addEventListener("input", enterA14);
+
+  var textA15 = document.getElementById("text_A15");
+  textA15.addEventListener("input", enterA15);
+
+  var textA16 = document.getElementById("text_A16");
+  textA16.addEventListener("input", enterA16);
+
+  var textf = document.getElementById("text_f");
+  textf.addEventListener("input", enterf);
+  textf.value = 400;
+
+  // Must initial here for Firefox to take it
+  var sliderA01 = document.getElementById("slider_A01");
+  sliderA01.addEventListener("input", slideA01);
+  sliderA01.value = 1.00;
+
+  var sliderA02 = document.getElementById("slider_A02");
+  sliderA02.addEventListener("input", slideA02);
+  sliderA02.value = 0.00;
+
+  var sliderA03 = document.getElementById("slider_A03");
+  sliderA03.addEventListener("input", slideA03);
+  sliderA03.value = 0.00;
+
+  var sliderA04 = document.getElementById("slider_A04");
+  sliderA04.addEventListener("input", slideA04);
+  sliderA04.value = 0.00;
+
+  var sliderA05 = document.getElementById("slider_A05");
+  sliderA05.addEventListener("input", slideA05);
+  sliderA05.value = 0.00;
+
+  var sliderA06 = document.getElementById("slider_A06");
+  sliderA06.addEventListener("input", slideA06);
+  sliderA06.value = 0.00;
+
+  var sliderA07 = document.getElementById("slider_A07");
+  sliderA07.addEventListener("input", slideA07);
+  sliderA07.value = 0.00;
+
+  var sliderA08 = document.getElementById("slider_A08");
+  sliderA08.addEventListener("input", slideA08);
+  sliderA08.value = 0.00;
+
+  var sliderA09 = document.getElementById("slider_A09");
+  sliderA09.addEventListener("input", slideA09);
+  sliderA09.value = 0.00;
+
+  var sliderA10 = document.getElementById("slider_A10");
+  sliderA10.addEventListener("input", slideA10);
+  sliderA10.value = 0.00;
+
+  var sliderA11 = document.getElementById("slider_A11");
+  sliderA11.addEventListener("input", slideA11);
+  sliderA11.value = 0.00;
+
+  var sliderA12 = document.getElementById("slider_A12");
+  sliderA12.addEventListener("input", slideA12);
+  sliderA12.value = 0.00;
+
+  var sliderA13 = document.getElementById("slider_A13");
+  sliderA13.addEventListener("input", slideA13);
+  sliderA13.value = 0.00;
+
+  var sliderA14 = document.getElementById("slider_A14");
+  sliderA14.addEventListener("input", slideA14);
+  sliderA14.value = 0.00;
+
+  var sliderA15 = document.getElementById("slider_A15");
+  sliderA15.addEventListener("input", slideA15);
+  sliderA15.value = 0.00;
+
+  var sliderA16 = document.getElementById("slider_A16");
+  sliderA16.addEventListener("input", slideA16);
+  sliderA16.value = 0.00;
+
+  var sliderf = document.getElementById("set_frequency");
+  sliderf.addEventListener("input", slidef);
+  sliderf.value = 400;
+
+  // Phases
+  var P01 = 0;
+  var P02 = 0;
+  var P03 = 0;
+  var P04 = 0;
+  var P05 = 0;
+  var P06 = 0;
+  var P07 = 0;
+  var P08 = 0;
+  var P09 = 0;
+  var P10 = 0;
+  var P11 = 0;
+  var P12 = 0;
+  var P13 = 0;
+  var P14 = 0;
+  var P15 = 0;
+  var P16 = 0;
+
+  // Degrees
+  var Pmax = 360;
+
+  // Convert degrees to radians
+  var toRad = Math.PI / 180;
+
+  var textP01 = document.getElementById("text_P01");
+  textP01.addEventListener("input", enterP01);
+
+  var textP02 = document.getElementById("text_P02");
+  textP02.addEventListener("input", enterP02);
+
+  var textP03 = document.getElementById("text_P03");
+  textP03.addEventListener("input", enterP03);
+
+  var textP04 = document.getElementById("text_P04");
+  textP04.addEventListener("input", enterP04);
+
+  var textP05 = document.getElementById("text_P05");
+  textP05.addEventListener("input", enterP05);
+
+  var textP06 = document.getElementById("text_P06");
+  textP06.addEventListener("input", enterP06);
+
+  var textP07 = document.getElementById("text_P07");
+  textP07.addEventListener("input", enterP07);
+
+  var textP08 = document.getElementById("text_P08");
+  textP08.addEventListener("input", enterP08);
+
+  var textP09 = document.getElementById("text_P09");
+  textP09.addEventListener("input", enterP09);
+
+  var textP10 = document.getElementById("text_P10");
+  textP10.addEventListener("input", enterP10);
+
+  var textP11 = document.getElementById("text_P11");
+  textP11.addEventListener("input", enterP11);
+
+  var textP12 = document.getElementById("text_P12");
+  textP12.addEventListener("input", enterP12);
+
+  var textP13 = document.getElementById("text_P13");
+  textP13.addEventListener("input", enterP13);
+
+  var textP14 = document.getElementById("text_P14");
+  textP14.addEventListener("input", enterP14);
+
+  var textP15 = document.getElementById("text_P15");
+  textP15.addEventListener("input", enterP15);
+
+  var textP16 = document.getElementById("text_P16");
+  textP16.addEventListener("input", enterP16);
+
+  fncReset();
+
+  function drawWave() {
+    // First clear the canvas
+    c.clearRect(0, 0, canWidth, canHeight);
+    // Find normalization factor for amplitude
+    //   so we can resize waveform to fit on screen.
+    var x, y;
+    var maxAmplitude = 1;
+    // Scan every 10 dx is good enough
+    for (x = xMin; x <= xMax; x += 10 * dx) {
+      y  = A01 * Math.sin( 1*ko*x+P01*toRad);
+      y += A02 * Math.sin( 2*ko*x+P02*toRad);
+      y += A03 * Math.sin( 3*ko*x+P03*toRad);
+      y += A04 * Math.sin( 4*ko*x+P04*toRad);
+      y += A05 * Math.sin( 5*ko*x+P05*toRad);
+      y += A06 * Math.sin( 6*ko*x+P06*toRad);
+      y += A07 * Math.sin( 7*ko*x+P07*toRad);
+      y += A08 * Math.sin( 8*ko*x+P08*toRad);
+      y += A09 * Math.sin( 9*ko*x+P09*toRad);
+      y += A10 * Math.sin(10*ko*x+P10*toRad);
+      y += A11 * Math.sin(11*ko*x+P11*toRad);
+      y += A12 * Math.sin(12*ko*x+P12*toRad);
+      y += A13 * Math.sin(13*ko*x+P13*toRad);
+      y += A14 * Math.sin(14*ko*x+P14*toRad);
+      y += A15 * Math.sin(15*ko*x+P15*toRad);
+      y += A16 * Math.sin(16*ko*x+P16*toRad);
+      if (Math.abs(y) > maxAmplitude) {
+        maxAmplitude = Math.abs(y);
+      }
+    }
+		c.beginPath();
+    c.strokeStyle = "#0ff";
+    c.lineWidth = "2";
+    y  = A01 * Math.sin(1*ko*xMin+P01*toRad);
+    y += A02 * Math.sin(2*ko*xMin+P02*toRad);
+    y += A03 * Math.sin(3*ko*xMin+P03*toRad);
+    y += A04 * Math.sin(4*ko*xMin+P04*toRad);
+    y += A05 * Math.sin(5*ko*xMin+P05*toRad);
+    y += A06 * Math.sin(6*ko*xMin+P06*toRad);
+    y += A07 * Math.sin(7*ko*xMin+P07*toRad);
+    y += A08 * Math.sin(8*ko*xMin+P08*toRad);
+    y += A09 * Math.sin(9*ko*xMin+P09*toRad);
+    y += A10 * Math.sin(10*ko*xMin+P10*toRad);
+    y += A11 * Math.sin(11*ko*xMin+P11*toRad);
+    y += A12 * Math.sin(12*ko*xMin+P12*toRad);
+    y += A13 * Math.sin(13*ko*xMin+P13*toRad);
+    y += A14 * Math.sin(14*ko*xMin+P14*toRad);
+    y += A15 * Math.sin(15*ko*xMin+P15*toRad);
+    y += A16 * Math.sin(16*ko*xMin+P16*toRad);
+    y = y / maxAmplitude;
+    c.moveTo(xD(xMin), yD(y));
+    for (x = xMin; x <= xMax; x += dx) {
+      y  = A01 * Math.sin( 1*ko*x+P01*toRad);
+      y += A02 * Math.sin( 2*ko*x+P02*toRad);
+      y += A03 * Math.sin( 3*ko*x+P03*toRad);
+      y += A04 * Math.sin( 4*ko*x+P04*toRad);
+      y += A05 * Math.sin( 5*ko*x+P05*toRad);
+      y += A06 * Math.sin( 6*ko*x+P06*toRad);
+      y += A07 * Math.sin( 7*ko*x+P07*toRad);
+      y += A08 * Math.sin( 8*ko*x+P08*toRad);
+      y += A09 * Math.sin( 9*ko*x+P09*toRad);
+      y += A10 * Math.sin(10*ko*x+P10*toRad);
+      y += A11 * Math.sin(11*ko*x+P11*toRad);
+      y += A12 * Math.sin(12*ko*x+P12*toRad);
+      y += A13 * Math.sin(13*ko*x+P13*toRad);
+      y += A14 * Math.sin(14*ko*x+P14*toRad);
+      y += A15 * Math.sin(15*ko*x+P15*toRad);
+      y += A16 * Math.sin(16*ko*x+P16*toRad);
+      y = y / maxAmplitude;
+      c.lineTo(xD(x), yD(y));
+    }
+    c.stroke();
+  }
+
+  function enterA01 () {
+    var z =  textA01.value;
+    if (isNaN(z) && z != ".") {
+      A01 = 0;
+      textA01.value = parseFloat(A01).toFixed(2);
+      sliderA01.value = A01;
+    }
+    else {
+      if(z > 1) {
+        A01 = Amax;
+        textA01.value = parseFloat(A01).toFixed(2);
+        sliderA01.value = A01;
+      }
+      else {
+        A01 = parseFloat(z);
+        sliderA01.value = A01;
+      }
+    }
+    if (!isNaN(A01)) {
+      amp01.gain.value = 0.15 * A01 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA02 () {
+    var z =  textA02.value;
+    if (isNaN(z) && z != ".") {
+      A02 = 0;
+      textA02.value = parseFloat(A02).toFixed(2);
+      sliderA02.value = A02;
+    }
+    else {
+      if(z > 1) {
+        A02 = Amax;
+        textA02.value = parseFloat(A02).toFixed(2);
+        sliderA02.value = A02;
+      }
+      else {
+        A02 = parseFloat(z);
+        sliderA02.value = A02;
+      }
+    }
+    if (!isNaN(A02)) {
+      amp02.gain.value = 0.15 * A02 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA03 () {
+    var z =  textA03.value;
+    if (isNaN(z) && z != ".") {
+      A03 = 0;
+      textA03.value = parseFloat(A03).toFixed(2);
+      sliderA03.value = A03;
+    }
+    else {
+      if(z > 1) {
+        A03 = Amax;
+        textA03.value = parseFloat(A03).toFixed(2);
+        sliderA03.value = A03;
+      }
+      else {
+        A03 = parseFloat(z);
+        sliderA03.value = A03;
+      }
+    }
+    if (!isNaN(A03)) {
+      amp03.gain.value = 0.15 * A03 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA04 () {
+    var z =  textA04.value;
+    if (isNaN(z) && z != ".") {
+      A04 = 0;
+      textA04.value = parseFloat(A04).toFixed(2);
+      sliderA04.value = A04;
+    }
+    else {
+      if(z > 1) {
+        A04 = Amax;
+        textA04.value = parseFloat(A04).toFixed(2);
+        sliderA04.value = A04;
+      }
+      else {
+        A04 = parseFloat(z);
+        sliderA04.value = A04;
+      }
+    }
+    if (!isNaN(A04)) {
+      amp04.gain.value = 0.15 * A04 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA05 () {
+    var z =  textA05.value;
+    if (isNaN(z) && z != ".") {
+      A05 = 0;
+      textA05.value = parseFloat(A05).toFixed(2);
+      sliderA05.value = A05;
+    }
+    else {
+      if(z > 1) {
+        A05 = Amax;
+        textA05.value = parseFloat(A05).toFixed(2);
+        sliderA05.value = A05;
+      }
+      else {
+        A05 = parseFloat(z);
+        sliderA05.value = A05;
+      }
+    }
+    if (!isNaN(A05)) {
+      amp05.gain.value = 0.15 * A05 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA06 () {
+    var z =  textA06.value;
+    if (isNaN(z) && z != ".") {
+      A06 = 0;
+      textA06.value = parseFloat(A06).toFixed(2);
+      sliderA06.value = A06;
+    }
+    else {
+      if(z > 1) {
+        A06 = Amax;
+        textA06.value = parseFloat(A06).toFixed(2);
+        sliderA06.value = A06;
+      }
+      else {
+        A06 = parseFloat(z);
+        sliderA06.value = A06;
+      }
+    }
+    if (!isNaN(A06)) {
+      amp06.gain.value = 0.15 * A06 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA07 () {
+    var z =  textA07.value;
+    if (isNaN(z) && z != ".") {
+      A07 = 0;
+      textA07.value = parseFloat(A07).toFixed(2);
+      sliderA07.value = A07;
+    }
+    else {
+      if(z > 1) {
+        A07 = Amax;
+        textA07.value = parseFloat(A07).toFixed(2);
+        sliderA07.value = A07;
+      }
+      else {
+        A07 = parseFloat(z);
+        sliderA07.value = A07;
+      }
+    }
+    if (!isNaN(A07)) {
+      amp07.gain.value = 0.15 * A07 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA08 () {
+    var z =  textA08.value;
+    if (isNaN(z) && z != ".") {
+      A08 = 0;
+      textA08.value = parseFloat(A08).toFixed(2);
+      sliderA08.value = A08;
+    }
+    else {
+      if(z > 1) {
+        A08 = Amax;
+        textA08.value = parseFloat(A08).toFixed(2);
+        sliderA08.value = A08;
+      }
+      else {
+        A08 = parseFloat(z);
+        sliderA08.value = A08;
+      }
+    }
+    if (!isNaN(A08)) {
+      amp08.gain.value = 0.15 * A08 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA09 () {
+    var z =  textA09.value;
+    if (isNaN(z) && z != ".") {
+      A09 = 0;
+      textA09.value = parseFloat(A09).toFixed(2);
+      sliderA09.value = A09;
+    }
+    else {
+      if(z > 1) {
+        A09 = Amax;
+        textA09.value = parseFloat(A09).toFixed(2);
+        sliderA09.value = A09;
+      }
+      else {
+        A09 = parseFloat(z);
+        sliderA09.value = A09;
+      }
+    }
+    if (!isNaN(A09)) {
+      amp09.gain.value = 0.15 * A09 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA10 () {
+    var z =  textA10.value;
+    if (isNaN(z) && z != ".") {
+      A10 = 0;
+      textA10.value = parseFloat(A10).toFixed(2);
+      sliderA10.value = A10;
+    }
+    else {
+      if(z > 1) {
+        A10 = Amax;
+        textA10.value = parseFloat(A10).toFixed(2);
+        sliderA10.value = A10;
+      }
+      else {
+        A10 = parseFloat(z);
+        sliderA10.value = A10;
+      }
+    }
+    if (!isNaN(A10)) {
+      amp10.gain.value = 0.15 * A10 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA11 () {
+    var z =  textA11.value;
+    if (isNaN(z) && z != ".") {
+      A11 = 0;
+      textA11.value = parseFloat(A11).toFixed(2);
+      sliderA11.value = A11;
+    }
+    else {
+      if(z > 1) {
+        A11 = Amax;
+        textA11.value = parseFloat(A11).toFixed(2);
+        sliderA11.value = A11;
+      }
+      else {
+        A11 = parseFloat(z);
+        sliderA11.value = A11;
+      }
+    }
+    if (!isNaN(A11)) {
+      amp11.gain.value = 0.15 * A11 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA12 () {
+    var z =  textA12.value;
+    if (isNaN(z) && z != ".") {
+      A12 = 0;
+      textA12.value = parseFloat(A12).toFixed(2);
+      sliderA12.value = A12;
+    }
+    else {
+      if(z > 1) {
+        A12 = Amax;
+        textA12.value = parseFloat(A12).toFixed(2);
+        sliderA12.value = A12;
+      }
+      else {
+        A12 = parseFloat(z);
+        sliderA12.value = A12;
+      }
+    }
+    if (!isNaN(A12)) {
+      amp12.gain.value = 0.15 * A12 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA13 () {
+    var z =  textA13.value;
+    if (isNaN(z) && z != ".") {
+      A13 = 0;
+      textA13.value = parseFloat(A13).toFixed(2);
+      sliderA13.value = A13;
+    }
+    else {
+      if(z > 1) {
+        A13 = Amax;
+        textA13.value = parseFloat(A13).toFixed(2);
+        sliderA13.value = A13;
+      }
+      else {
+        A13 = parseFloat(z);
+        sliderA13.value = A13;
+      }
+    }
+    if (!isNaN(A13)) {
+      amp13.gain.value = 0.15 * A13 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA14 () {
+    var z =  textA14.value;
+    if (isNaN(z) && z != ".") {
+      A14 = 0;
+      textA14.value = parseFloat(A14).toFixed(2);
+      sliderA14.value = A14;
+    }
+    else {
+      if(z > 1) {
+        A14 = Amax;
+        textA14.value = parseFloat(A14).toFixed(2);
+        sliderA14.value = A14;
+      }
+      else {
+        A14 = parseFloat(z);
+        sliderA14.value = A14;
+      }
+    }
+    if (!isNaN(A14)) {
+      amp14.gain.value = 0.15 * A14 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA15 () {
+    var z =  textA15.value;
+    if (isNaN(z) && z != ".") {
+      A15 = 0;
+      textA15.value = parseFloat(A15).toFixed(2);
+      sliderA15.value = A15;
+    }
+    else {
+      if(z > 1) {
+        A15 = Amax;
+        textA15.value = parseFloat(A15).toFixed(2);
+        sliderA15.value = A15;
+      }
+      else {
+        A15 = parseFloat(z);
+        sliderA15.value = A15;
+      }
+    }
+    if (!isNaN(A15)) {
+      amp15.gain.value = 0.15 * A15 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterA16 () {
+    var z =  textA16.value;
+    if (isNaN(z) && z != ".") {
+      A16 = 0;
+      textA16.value = parseFloat(A16).toFixed(2);
+      sliderA16.value = A16;
+    }
+    else {
+      if(z > 1) {
+        A16 = Amax;
+        textA16.value = parseFloat(A16).toFixed(2);
+        sliderA16.value = A16;
+      }
+      else {
+        A16 = parseFloat(z);
+        sliderA16.value = A16;
+      }
+    }
+    if (!isNaN(A16)) {
+      amp16.gain.value = 0.15 * A16 * maxVolume;
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterf () {
+    var z =  textf.value;
+    if (isNaN(z)) {
+      f = 200;
+      textf.value = parseFloat(f).toFixed(0);
+      sliderf.value = f;
+    }
+    else {
+      if(z > 800) {
+        f = 800;
+        textf.value = parseFloat(f).toFixed(0);
+        sliderf.value = f;
+      }
+      else {
+        f = parseFloat(z);
+        sliderf.value = f;
+      }
+    }
+    if (!isNaN(f)) {
+      setOscillators ();
+      drawWave();
+    }
+	}
+
+  function setOscillators () {
+    osc01.frequency.value = f;
+    osc02.frequency.value = 2 * f;
+    osc03.frequency.value = 3 * f;
+    osc04.frequency.value = 4 * f;
+    osc05.frequency.value = 5 * f;
+    osc06.frequency.value = 6 * f;
+    osc07.frequency.value = 7 * f;
+    osc08.frequency.value = 8 * f;
+    osc09.frequency.value = 9 * f;
+    osc10.frequency.value = 10 * f;
+    osc11.frequency.value = 11 * f;
+    osc12.frequency.value = 12 * f;
+    osc13.frequency.value = 13 * f;
+    osc14.frequency.value = 14 * f;
+    osc15.frequency.value = 15 * f;
+    osc16.frequency.value = 16 * f;
+    ko = 2 * Math.PI * f / 2000;
+  }
+
+  function slideA01() {
+    A01 = sliderA01.value;
+    textA01.value = parseFloat(A01).toFixed(2);
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA02() {
+    A02 = sliderA02.value;
+    textA02.value = parseFloat(A02).toFixed(2);
+    amp02.gain.value = 0.15 * A02 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA03() {
+    A03 = sliderA03.value;
+    textA03.value = parseFloat(A03).toFixed(2);
+    amp03.gain.value = 0.15 * A03 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA04() {
+    A04 = sliderA04.value;
+    textA04.value = parseFloat(A04).toFixed(2);
+    amp04.gain.value = 0.15 * A04 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA05() {
+    A05 = sliderA05.value;
+    textA05.value = parseFloat(A05).toFixed(2);
+    amp05.gain.value = 0.15 * A05 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA06() {
+    A06 = sliderA06.value;
+    textA06.value = parseFloat(A06).toFixed(2);
+    amp06.gain.value = 0.15 * A06 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA07() {
+    A07 = sliderA07.value;
+    textA07.value = parseFloat(A07).toFixed(2);
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA08() {
+    A08 = sliderA08.value;
+    textA08.value = parseFloat(A08).toFixed(2);
+    amp08.gain.value = 0.15 * A08 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA09() {
+    A09 = sliderA09.value;
+    textA09.value = parseFloat(A09).toFixed(2);
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA10() {
+    A10 = sliderA10.value;
+    textA10.value = parseFloat(A10).toFixed(2);
+    amp10.gain.value = 0.15 * A10 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA11() {
+    A11 = sliderA11.value;
+    textA11.value = parseFloat(A11).toFixed(2);
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA12() {
+    A12 = sliderA12.value;
+    textA12.value = parseFloat(A12).toFixed(2);
+    amp12.gain.value = 0.15 * A12 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA13() {
+    A13 = sliderA13.value;
+    textA13.value = parseFloat(A13).toFixed(2);
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA14() {
+    A14 = sliderA14.value;
+    textA14.value = parseFloat(A14).toFixed(2);
+    amp14.gain.value = 0.15 * A14 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA15() {
+    A15 = sliderA15.value;
+    textA15.value = parseFloat(A15).toFixed(2);
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slideA16() {
+    A16 = sliderA16.value;
+    textA16.value = parseFloat(A16).toFixed(2);
+    amp16.gain.value = 0.15 * A16 * maxVolume;
+    unhightlightButtons();
+    drawWave();
+  }
+
+  function slidef() {
+    f = sliderf.value;
+    textf.value = parseFloat(f).toFixed(0);
+    setOscillators ();
+    drawWave();
+  }
+
+  function enterP01 () {
+    var z =  textP01.value;
+    if (isNaN(z)) {
+      P01 = 0;
+      textP01.value = parseFloat(P01).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P01 = Pmax;
+        textP01.value = parseFloat(P01).toFixed(0);
+      }
+      else {
+        P01 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP02 () {
+    var z =  textP02.value;
+    if (isNaN(z)) {
+      P02 = 0;
+      textP02.value = parseFloat(P02).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P02 = Pmax;
+        textP02.value = parseFloat(P02).toFixed(0);
+      }
+      else {
+        P02 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP03 () {
+    var z =  textP03.value;
+    if (isNaN(z)) {
+      P03 = 0;
+      textP03.value = parseFloat(P03).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P03 = Pmax;
+        textP03.value = parseFloat(P03).toFixed(0);
+      }
+      else {
+        P03 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP04 () {
+    var z =  textP04.value;
+    if (isNaN(z)) {
+      P04 = 0;
+      textP04.value = parseFloat(P04).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P04 = Pmax;
+        textP04.value = parseFloat(P04).toFixed(0);
+      }
+      else {
+        P04 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP05 () {
+    var z =  textP05.value;
+    if (isNaN(z)) {
+      P05 = 0;
+      textP05.value = parseFloat(P05).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P05 = Pmax;
+        textP05.value = parseFloat(P05).toFixed(0);
+      }
+      else {
+        P05 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP06 () {
+    var z =  textP06.value;
+    if (isNaN(z)) {
+      P06 = 0;
+      textP06.value = parseFloat(P06).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P06 = Pmax;
+        textP06.value = parseFloat(P06).toFixed(0);
+      }
+      else {
+        P06 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP07 () {
+    var z =  textP07.value;
+    if (isNaN(z)) {
+      P07 = 0;
+      textP07.value = parseFloat(P07).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P07 = Pmax;
+        textP07.value = parseFloat(P07).toFixed(0);
+      }
+      else {
+        P07 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP08 () {
+    var z =  textP08.value;
+    if (isNaN(z)) {
+      P08 = 0;
+      textP08.value = parseFloat(P08).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P08 = Pmax;
+        textP08.value = parseFloat(P08).toFixed(0);
+      }
+      else {
+        P08 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP09 () {
+    var z =  textP09.value;
+    if (isNaN(z)) {
+      P09 = 0;
+      textP09.value = parseFloat(P09).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P09 = Pmax;
+        textP09.value = parseFloat(P09).toFixed(0);
+      }
+      else {
+        P09 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP10 () {
+    var z =  textP10.value;
+    if (isNaN(z)) {
+      P10 = 0;
+      textP10.value = parseFloat(P10).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P10 = Pmax;
+        textP10.value = parseFloat(P10).toFixed(0);
+      }
+      else {
+        P10 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP11 () {
+    var z =  textP11.value;
+    if (isNaN(z)) {
+      P11 = 0;
+      textP11.value = parseFloat(P11).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P11 = Pmax;
+        textP11.value = parseFloat(P11).toFixed(0);
+      }
+      else {
+        P11 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP12 () {
+    var z =  textP12.value;
+    if (isNaN(z)) {
+      P12 = 0;
+      textP12.value = parseFloat(P12).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P12 = Pmax;
+        textP12.value = parseFloat(P12).toFixed(0);
+      }
+      else {
+        P12 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP13 () {
+    var z =  textP13.value;
+    if (isNaN(z)) {
+      P13 = 0;
+      textP13.value = parseFloat(P13).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P13 = Pmax;
+        textP13.value = parseFloat(P13).toFixed(0);
+      }
+      else {
+        P13 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP14 () {
+    var z =  textP14.value;
+    if (isNaN(z)) {
+      P14 = 0;
+      textP14.value = parseFloat(P14).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P14 = Pmax;
+        textP14.value = parseFloat(P14).toFixed(0);
+      }
+      else {
+        P14 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP15 () {
+    var z =  textP15.value;
+    if (isNaN(z)) {
+      P15 = 0;
+      textP15.value = parseFloat(P15).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P15 = Pmax;
+        textP15.value = parseFloat(P15).toFixed(0);
+      }
+      else {
+        P15 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function enterP16 () {
+    var z =  textP16.value;
+    if (isNaN(z)) {
+      P16 = 0;
+      textP16.value = parseFloat(P16).toFixed(0);
+    }
+    else {
+      if(z > 360) {
+        P16 = Pmax;
+        textP16.value = parseFloat(P16).toFixed(0);
+      }
+      else {
+        P16 = parseFloat(z);
+      }
+    }
+    unhightlightButtons();
+    drawWave();
+	}
+
+  function newMaxVolume () {
+    maxVolume = setMaxVolume.value;
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    amp02.gain.value = 0.15 * A02 * maxVolume;
+    amp03.gain.value = 0.15 * A03 * maxVolume;
+    amp04.gain.value = 0.15 * A04 * maxVolume;
+    amp05.gain.value = 0.15 * A05 * maxVolume;
+    amp06.gain.value = 0.15 * A06 * maxVolume;
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    amp08.gain.value = 0.15 * A08 * maxVolume;
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    amp10.gain.value = 0.15 * A10 * maxVolume;
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    amp12.gain.value = 0.15 * A12 * maxVolume;
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    amp14.gain.value = 0.15 * A14 * maxVolume;
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+    amp16.gain.value = 0.15 * A16 * maxVolume;
+    drawWave();
+  }
+
+  function mute () {
+    maxVolume = 0;		
+    setMaxVolume.value = 0;
+    amp01.gain.value = 0;
+    amp02.gain.value = 0;
+    amp03.gain.value = 0;
+    amp04.gain.value = 0;
+    amp05.gain.value = 0;
+    amp06.gain.value = 0;
+    amp07.gain.value = 0;
+    amp08.gain.value = 0;
+    amp09.gain.value = 0;
+    amp10.gain.value = 0;
+    amp11.gain.value = 0;
+    amp12.gain.value = 0;
+    amp13.gain.value = 0;
+    amp14.gain.value = 0;
+    amp15.gain.value = 0;
+    amp16.gain.value = 0;
+    drawWave();
+  }
+
+  function sine () {
+    fncReset(); // Sets A01 = 1 and others to zero
+                // Sets all phases to zero
+    unhightlightButtons();
+    btnSine.style.background = highlightBtnColor;
+    // A01 set again for code readability
+    A01 = 1; textA01.value = parseFloat(A01).toFixed(2);
+    sliderA01.value = A01;
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+  }
+
+  function triangle () {
+    fncReset();
+    unhightlightButtons();
+    btnTriangle.style.background = highlightBtnColor;
+    A01 = 1; textA01.value = parseFloat(A01).toFixed(2);
+    sliderA01.value = A01;
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    A03 = 1/9; textA03.value = parseFloat(A03).toFixed(2);
+    sliderA03.value = A03;
+    amp03.gain.value = 0.15 * A03 * maxVolume; 
+    A05 = 1/25; textA05.value = parseFloat(A05).toFixed(2);
+    sliderA05.value = A05;
+    amp05.gain.value = 0.15 * A05 * maxVolume; 
+    A07 = 1/49; textA07.value = parseFloat(A07).toFixed(2);
+    sliderA07.value = A07;
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    A09 = 1/81; textA09.value = parseFloat(A09).toFixed(2);
+    sliderA09.value = A09;
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    A11 = 1/121; textA11.value = parseFloat(A11).toFixed(2);
+    sliderA11.value = A11;
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    A13 = 1/169; textA13.value = parseFloat(A13).toFixed(2);
+    sliderA13.value = A13;
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    A15 = 1/225; textA15.value = parseFloat(A15).toFixed(2);
+    sliderA15.value = A15;
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+
+    // Set the Phases
+    P03 = 180; textP03.value = parseFloat(P03).toFixed(0);
+    P07 = 180; textP07.value = parseFloat(P07).toFixed(0);
+    P11 = 180; textP11.value = parseFloat(P11).toFixed(0);
+    P15 = 180; textP15.value = parseFloat(P15).toFixed(0);
+
+    drawWave(); 
+  }
+
+  function square () {
+    fncReset(); 
+    unhightlightButtons();
+    btnSquare.style.background = highlightBtnColor;
+    A01 = 1; textA01.value = parseFloat(A01).toFixed(2);
+    sliderA01.value = A01;
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    A03 = 1/3; textA03.value = parseFloat(A03).toFixed(2);
+    amp03.gain.value = 0.15 * A03 * maxVolume; 
+    sliderA03.value = A03;
+    A05 = 1/5; textA05.value = parseFloat(A05).toFixed(2);
+    amp05.gain.value = 0.15 * A05 * maxVolume; 
+    sliderA05.value = A05;
+    A07 = 1/7; textA07.value = parseFloat(A07).toFixed(2);
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    sliderA07.value = A07;
+    A09 = 1/9; textA09.value = parseFloat(A09).toFixed(2);
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    sliderA09.value = A09;
+    A11 = 1/11; textA11.value = parseFloat(A11).toFixed(2);
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    sliderA11.value = A11;
+    A13 = 1/13; textA13.value = parseFloat(A13).toFixed(2);
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    sliderA13.value = A13;
+    A15 = 1/15; textA15.value = parseFloat(A15).toFixed(2);
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+    sliderA15.value = A15;
+    drawWave();   
+   }
+
+  function ramp () {
+    fncReset();
+    unhightlightButtons();
+    btnRamp.style.background = highlightBtnColor;
+    A01 = 1; textA01.value = parseFloat(A01).toFixed(2);
+    sliderA01.value = A01;
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    P01 = 180; textP01.value = parseFloat(P01).toFixed(0);
+    A02 = 1/2; textA02.value = parseFloat(A02).toFixed(2);
+    sliderA02.value = A02;
+    amp02.gain.value = 0.15 * A02 * maxVolume; 
+    P02 = 180; textP02.value = parseFloat(P02).toFixed(0);
+    A03 = 1/3; textA03.value = parseFloat(A03).toFixed(2);
+    sliderA03.value = A03;
+    amp03.gain.value = 0.15 * A03 * maxVolume; 
+    P03 = 180; textP03.value = parseFloat(P03).toFixed(0);
+    A04 = 1/4; textA04.value = parseFloat(A04).toFixed(2);
+    sliderA04.value = A04;
+    amp04.gain.value = 0.15 * A04 * maxVolume; 
+    P04 = 180; textP04.value = parseFloat(P04).toFixed(0);
+    A05 = 1/5; textA05.value = parseFloat(A05).toFixed(2);
+    sliderA05.value = A05;
+    amp05.gain.value = 0.15 * A05 * maxVolume; 
+    P05 = 180; textP05.value = parseFloat(P05).toFixed(0);
+    A06 = 1/6; textA06.value = parseFloat(A06).toFixed(2);
+    amp06.gain.value = 0.15 * A06 * maxVolume;
+    sliderA06.value = A06;
+    P06 = 180; textP06.value = parseFloat(P06).toFixed(0);
+    A07 = 1/7; textA07.value = parseFloat(A07).toFixed(2);
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    sliderA07.value = A07;
+    P07 = 180; textP07.value = parseFloat(P07).toFixed(0);
+    A08 = 1/8; textA08.value = parseFloat(A08).toFixed(2);
+    amp08.gain.value = 0.15 * A08 * maxVolume;
+    sliderA08.value = A08;
+    P08 = 180; textP08.value = parseFloat(P08).toFixed(0);
+    A09 = 1/9; textA09.value = parseFloat(A09).toFixed(2);
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    sliderA09.value = A09;
+    P09 = 180; textP09.value = parseFloat(P09).toFixed(0);
+    A10 = 1/10; textA10.value = parseFloat(A10).toFixed(2);
+    amp10.gain.value = 0.15 * A10 * maxVolume;
+    sliderA10.value = A10;
+    P10 = 180; textP10.value = parseFloat(P10).toFixed(0);
+    A11 = 1/11; textA11.value = parseFloat(A11).toFixed(2);
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    sliderA11.value = A11;
+    P11 = 180; textP11.value = parseFloat(P11).toFixed(0);    
+    A12 = 1/12; textA12.value = parseFloat(A12).toFixed(2);
+    amp12.gain.value = 0.15 * A12 * maxVolume;
+    sliderA12.value = A12;
+    P12 = 180; textP12.value = parseFloat(P12).toFixed(0);
+    A13 = 1/13; textA13.value = parseFloat(A13).toFixed(2);
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    sliderA13.value = A13;
+    P13 = 180; textP13.value = parseFloat(P13).toFixed(0);
+    A14 = 1/14; textA14.value = parseFloat(A14).toFixed(2);
+    amp14.gain.value = 0.15 * A14 * maxVolume;
+    sliderA14.value = A14;
+    P14 = 180; textP14.value = parseFloat(P14).toFixed(0);
+    A15 = 1/15; textA15.value = parseFloat(A15).toFixed(2);
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+    sliderA15.value = A15;
+    P15 = 180; textP15.value = parseFloat(P15).toFixed(0);
+    A16 = 1/16; textA16.value = parseFloat(A16).toFixed(2);
+    amp16.gain.value = 0.15 * A16 * maxVolume;
+    sliderA16.value = A16;
+    P16 = 180; textP16.value = parseFloat(P16).toFixed(0); 
+    drawWave();
+  }
+
+  function pulseTrain () {
+    fncReset();
+    unhightlightButtons();
+    btnPulseTrain.style.background = highlightBtnColor;
+    A01 = 1; textA01.value = parseFloat(A01).toFixed(2);
+    sliderA01.value = A01;
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    P01 = 90; textP01.value = parseFloat(P01).toFixed(0);
+    A02 = 1; textA02.value = parseFloat(A02).toFixed(2);
+    sliderA02.value = A02;
+    amp02.gain.value = 0.15 * A02 * maxVolume;
+    P02 = 90; textP02.value = parseFloat(P02).toFixed(0);
+    A03 = 1; textA03.value = parseFloat(A03).toFixed(2);
+    amp03.gain.value = 0.15 * A03 * maxVolume;
+    sliderA03.value = A03;
+    P03 = 90; textP03.value = parseFloat(P03).toFixed(0);
+    A04 = 1; textA04.value = parseFloat(A04).toFixed(2);
+    amp04.gain.value = 0.15 * A04 * maxVolume;
+    sliderA04.value = A04;
+    P04 = 90; textP04.value = parseFloat(P04).toFixed(0);
+    A05 = 1; textA05.value = parseFloat(A05).toFixed(2);
+    amp05.gain.value = 0.15 * A05 * maxVolume;
+    sliderA05.value = A05;
+    P05 = 90; textP05.value = parseFloat(P05).toFixed(0);
+    A06 = 1; textA06.value = parseFloat(A06).toFixed(2);
+    amp06.gain.value = 0.15 * A06 * maxVolume;
+    sliderA06.value = A06;
+    P06 = 90; textP06.value = parseFloat(P06).toFixed(0); 
+    A07 = 1; textA07.value = parseFloat(A07).toFixed(2);
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    sliderA07.value = A07;
+    P07 = 90; textP07.value = parseFloat(P07).toFixed(0); 
+    A08 = 1; textA08.value = parseFloat(A08).toFixed(2);
+    amp08.gain.value = 0.15 * A08 * maxVolume;
+    sliderA08.value = A08;
+    P08 = 90; textP08.value = parseFloat(P08).toFixed(0); 
+    A09 = 1; textA09.value = parseFloat(A09).toFixed(2);
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    sliderA09.value = A09;
+    P09 = 90; textP09.value = parseFloat(P09).toFixed(0); 
+    A10 = 1; textA10.value = parseFloat(A10).toFixed(2);
+    amp10.gain.value = 0.15 * A10 * maxVolume;
+    sliderA10.value = A10;
+    P10 = 90; textP10.value = parseFloat(P10).toFixed(0); 
+    A11 = 1; textA11.value = parseFloat(A11).toFixed(2);
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    sliderA11.value = A11;
+    P11 = 90; textP11.value = parseFloat(P11).toFixed(0); 
+    A12 = 1; textA12.value = parseFloat(A12).toFixed(2);
+    amp12.gain.value = 0.15 * A12 * maxVolume;
+    sliderA12.value = A12;
+    P12 = 90; textP12.value = parseFloat(P12).toFixed(0);
+    A13 = 1; textA13.value = parseFloat(A13).toFixed(2);
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    sliderA13.value = A13;
+    P13 = 90; textP13.value = parseFloat(P13).toFixed(0);
+    A14 = 1; textA14.value = parseFloat(A14).toFixed(2);
+    amp14.gain.value = 0.15 * A14 * maxVolume;
+    sliderA14.value = A14;
+    P14 = 90; textP14.value = parseFloat(P14).toFixed(0);
+    A15 = 1; textA15.value = parseFloat(A15).toFixed(2);
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+    sliderA15.value = A15;
+    P15 = 90; textP15.value = parseFloat(P15).toFixed(0);
+    A16 = 1; textA16.value = parseFloat(A16).toFixed(2);
+    amp16.gain.value = 0.15 * A16 * maxVolume;
+    sliderA16.value = A16;
+    P16 = 90; textP16.value = parseFloat(P16).toFixed(0);
+    drawWave();
+  }
+
+  // Unhighlight the waveform buttons in one routine
+  function unhightlightButtons() {
+    btnSine.style.backgroundColor=defaultBtnColor;
+    btnTriangle.style.backgroundColor=defaultBtnColor;
+    btnSquare.style.backgroundColor=defaultBtnColor;
+    btnRamp.style.backgroundColor=defaultBtnColor;
+    btnPulseTrain.style.backgroundColor=defaultBtnColor;
+  }
+
+  function fncReset () {
+    unhightlightButtons();
+    A01 = 1; textA01.value = parseFloat(A01).toFixed(2);
+    amp01.gain.value = 0.15 * A01 * maxVolume;
+    sliderA01.value = A01;
+    A02 = 0; textA02.value = parseFloat(A02).toFixed(2);
+    amp02.gain.value = 0.15 * A02 * maxVolume;
+    sliderA02.value = A02;
+    A03 = 0; textA03.value = parseFloat(A03).toFixed(2);
+    amp03.gain.value = 0.15 * A03 * maxVolume;
+    sliderA03.value = A03;
+    A04 = 0; textA04.value = parseFloat(A04).toFixed(2);
+    amp04.gain.value = 0.15 * A04 * maxVolume;
+    sliderA04.value = A04;
+    A05 = 0; textA05.value = parseFloat(A05).toFixed(2);
+    amp05.gain.value = 0.15 * A05 * maxVolume;
+    sliderA05.value = A05;
+    A06 = 0; textA06.value = parseFloat(A06).toFixed(2);
+    amp06.gain.value = 0.15 * A06 * maxVolume;
+    sliderA06.value = A06;
+    A07 = 0; textA07.value = parseFloat(A07).toFixed(2);
+    amp07.gain.value = 0.15 * A07 * maxVolume;
+    sliderA07.value = A07;
+    A08 = 0; textA08.value = parseFloat(A08).toFixed(2);
+    amp08.gain.value = 0.15 * A08 * maxVolume;
+    sliderA08.value = A08;
+    A09 = 0; textA09.value = parseFloat(A09).toFixed(2);
+    amp09.gain.value = 0.15 * A09 * maxVolume;
+    sliderA09.value = A09;
+    A10 = 0; textA10.value = parseFloat(A10).toFixed(2);
+    amp10.gain.value = 0.15 * A10 * maxVolume;
+    sliderA10.value = A10;
+    A11 = 0; textA11.value = parseFloat(A11).toFixed(2);
+    amp11.gain.value = 0.15 * A11 * maxVolume;
+    sliderA11.value = A11;
+    A12 = 0; textA12.value = parseFloat(A12).toFixed(2);
+    amp12.gain.value = 0.15 * A12 * maxVolume;
+    sliderA12.value = A12;
+    A13 = 0; textA13.value = parseFloat(A13).toFixed(2);
+    amp13.gain.value = 0.15 * A13 * maxVolume;
+    sliderA13.value = A13;
+    A14 = 0; textA14.value = parseFloat(A14).toFixed(2);
+    amp14.gain.value = 0.15 * A14 * maxVolume;
+    sliderA14.value = A14;
+    A15 = 0; textA12.value = parseFloat(A15).toFixed(2);
+    amp15.gain.value = 0.15 * A15 * maxVolume;
+    sliderA15.value = A15;
+    A16 = 0; textA16.value = parseFloat(A16).toFixed(2);
+    amp16.gain.value = 0.15 * A16 * maxVolume;
+    sliderA16.value = A16;
+    P01 = 0; textP01.value = parseFloat(P01).toFixed(0);
+    P02 = 0; textP02.value = parseFloat(P02).toFixed(0);
+    P03 = 0; textP03.value = parseFloat(P03).toFixed(0);
+    P04 = 0; textP04.value = parseFloat(P04).toFixed(0);
+    P05 = 0; textP05.value = parseFloat(P05).toFixed(0);
+    P06 = 0; textP06.value = parseFloat(P06).toFixed(0);
+    P07 = 0; textP07.value = parseFloat(P07).toFixed(0);
+    P08 = 0; textP08.value = parseFloat(P08).toFixed(0);
+    P09 = 0; textP09.value = parseFloat(P09).toFixed(0);
+    P10 = 0; textP10.value = parseFloat(P10).toFixed(0);
+    P11 = 0; textP11.value = parseFloat(P11).toFixed(0);
+    P12 = 0; textP12.value = parseFloat(P12).toFixed(0);
+    P13 = 0; textP13.value = parseFloat(P13).toFixed(0);
+    P14 = 0; textP14.value = parseFloat(P14).toFixed(0);
+    P15 = 0; textP15.value = parseFloat(P15).toFixed(0);
+    P16 = 0; textP16.value = parseFloat(P16).toFixed(0);
+    setOscillators ();
+    drawWave();
+  }
+
+  function setFrequency200 () {
+    f = 200;
+    textf.value = parseFloat(f).toFixed(0);
+    sliderf.value = f;
+    setOscillators ();
+    drawWave();
+  }
+
+  function setFrequency400 () {
+    f = 400;
+    textf.value = parseFloat(f).toFixed(0);
+    sliderf.value = f;
+    setOscillators ();
+    drawWave();
+  }
+
+/*
+  Coordinate Transformations:
+    xD => width * (fraction of the way x is to the right)
+    xD =  width * (x - xMin)/(xMax - xMin)                 
+    yD => height * (fraction of the way y is to the bottom)
+    yD =  height * (yMax - y)/(yMax - yMin)
+*/
+
+  function xD(x) {
+    return xDoffset + width * (x - xMin)/(xMax - xMin);
+  }
+
+  function yD(y) {
+    return yDoffset + height * (yMax - y)/(yMax - yMin);
+  }
+
+}
+
+</script>
+
+</body>
+
+</html>
